@@ -48,7 +48,7 @@
         "valid": true
       },
       {
-        "description": "is ok",
+        "description": "is not ok",
         "data": {
           "ageRange": {
             "minAge": 30,
@@ -58,7 +58,7 @@
         "valid": false
       },
       {
-        "description": "is ok",
+        "description": "is not ok",
         "data": {
           "ageRange": {
             "minAge": 50,
