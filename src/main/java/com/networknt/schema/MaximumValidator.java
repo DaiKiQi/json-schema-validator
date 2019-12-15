@@ -17,6 +17,7 @@
 package com.networknt.schema;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.networknt.schema.utils.PathUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,6 +39,30 @@ public class MaximumValidator extends BaseJsonValidator implements JsonValidator
         super(schemaPath, schemaNode, parentSchema, ValidatorTypeCode.MAXIMUM, validationContext);
 
         if (!schemaNode.isNumber()) {
+            if (schemaNode.asText().startsWith("$")) {
+                typedMaximum = new ThresholdMixin() {
+                    @Override
+                    public boolean crossesThreshold(JsonNode node) {
+                        return false;
+                    }
+
+                    @Override
+                    public String thresholdValue() {
+                        return null;
+                    }
+
+                    @Override
+                    public String getPath() {
+                        return schemaNode.asText();
+                    }
+
+                    @Override
+                    public ValidationContext getValidationContext() {
+                        return validationContext;
+                    }
+                };
+                return;
+            }
             throw new JsonSchemaException("maximum value is not a number");
         }
 
@@ -49,7 +74,7 @@ public class MaximumValidator extends BaseJsonValidator implements JsonValidator
         parseErrorCode(getValidatorType().getErrorCodeKey());
 
         final String maximumText = schemaNode.asText();
-        if (( schemaNode.isLong() || schemaNode.isInt() ) && (JsonType.INTEGER.toString().equals(getNodeFieldType()))) {
+        if ((schemaNode.isLong() || schemaNode.isInt()) && (JsonType.INTEGER.toString().equals(getNodeFieldType()))) {
             // "integer", and within long range
             final long lm = schemaNode.asLong();
             typedMaximum = new ThresholdMixin() {
@@ -107,6 +132,14 @@ public class MaximumValidator extends BaseJsonValidator implements JsonValidator
 
     public Set<ValidationMessage> validate(JsonNode node, JsonNode rootNode, String at) {
         debug(logger, node, rootNode, at);
+
+        String path = typedMaximum.getPath();
+        if (path !=null && path.startsWith("$")) {
+            JsonNode nodeTmp = PathUtil.pathAll(rootNode, path);
+            MaximumValidator maximumValidator = new MaximumValidator(this.getSchemaPath(), nodeTmp,
+                    this.getParentSchema(), typedMaximum.getValidationContext());
+            return maximumValidator.validate(node, rootNode, at);
+        }
 
         if (!TypeValidator.isNumber(node, config.isTypeLoose())) {
             // maximum only applies to numbers

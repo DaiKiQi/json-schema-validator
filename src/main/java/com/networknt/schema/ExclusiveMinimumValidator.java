@@ -17,6 +17,7 @@
 package com.networknt.schema;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.networknt.schema.utils.PathUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,6 +39,30 @@ public class ExclusiveMinimumValidator extends BaseJsonValidator implements Json
         super(schemaPath, schemaNode, parentSchema, ValidatorTypeCode.EXCLUSIVE_MINIMUM, validationContext);
 
         if (!schemaNode.isNumber()) {
+            if (schemaNode.asText().startsWith("$")) {
+                typedMinimum = new ThresholdMixin() {
+                    @Override
+                    public boolean crossesThreshold(JsonNode node) {
+                        return false;
+                    }
+
+                    @Override
+                    public String thresholdValue() {
+                        return null;
+                    }
+
+                    @Override
+                    public String getPath() {
+                        return schemaNode.asText();
+                    }
+
+                    @Override
+                    public ValidationContext getValidationContext() {
+                        return validationContext;
+                    }
+                };
+                return;
+            }
             throw new JsonSchemaException("exclusiveMinimum value is not a number");
         }
 
@@ -105,6 +130,14 @@ public class ExclusiveMinimumValidator extends BaseJsonValidator implements Json
 
     public Set<ValidationMessage> validate(JsonNode node, JsonNode rootNode, String at) {
         debug(logger, node, rootNode, at);
+
+        String path = typedMinimum.getPath();
+        if (path !=null && path.startsWith("$")) {
+            JsonNode nodeTmp = PathUtil.pathAll(rootNode, path);
+            ExclusiveMinimumValidator exclusiveMinimumValidator = new ExclusiveMinimumValidator(this.getSchemaPath(), nodeTmp,
+                    this.getParentSchema(), typedMinimum.getValidationContext());
+            return exclusiveMinimumValidator.validate(node, rootNode, at);
+        }
 
         if (!TypeValidator.isNumber(node, config.isTypeLoose())) {
             // minimum only applies to numbers

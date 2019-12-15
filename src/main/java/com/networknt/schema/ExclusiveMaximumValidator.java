@@ -17,6 +17,8 @@
 package com.networknt.schema;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.networknt.schema.utils.PathUtil;
+import com.sun.javafx.scene.shape.PathUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -34,6 +36,30 @@ public class ExclusiveMaximumValidator extends BaseJsonValidator implements Json
         super(schemaPath, schemaNode, parentSchema, ValidatorTypeCode.EXCLUSIVE_MAXIMUM, validationContext);
 
         if (!schemaNode.isNumber()) {
+            if (schemaNode.asText().startsWith("$")) {
+                typedMaximum = new ThresholdMixin() {
+                    @Override
+                    public boolean crossesThreshold(JsonNode node) {
+                        return false;
+                    }
+
+                    @Override
+                    public String thresholdValue() {
+                        return null;
+                    }
+
+                    @Override
+                    public String getPath() {
+                        return schemaNode.asText();
+                    }
+
+                    @Override
+                    public ValidationContext getValidationContext() {
+                        return validationContext;
+                    }
+                };
+                return;
+            }
             throw new JsonSchemaException("exclusiveMaximum value is not a number");
         }
 
@@ -99,6 +125,15 @@ public class ExclusiveMaximumValidator extends BaseJsonValidator implements Json
     public Set<ValidationMessage> validate(JsonNode node, JsonNode rootNode, String at) {
         debug(logger, node, rootNode, at);
 
+
+        String path = typedMaximum.getPath();
+        if (path !=null && path.startsWith("$")) {
+            JsonNode nodeTmp = PathUtil.pathAll(rootNode, path);
+            ExclusiveMaximumValidator exclusiveMaximumValidator = new ExclusiveMaximumValidator(this.getSchemaPath(), nodeTmp,
+                    this.getParentSchema(), typedMaximum.getValidationContext());
+            return exclusiveMaximumValidator.validate(node, rootNode, at);
+        }
+
         if (!TypeValidator.isNumber(node, config.isTypeLoose())) {
             // maximum only applies to numbers
             return Collections.emptySet();
@@ -109,4 +144,6 @@ public class ExclusiveMaximumValidator extends BaseJsonValidator implements Json
         }
         return Collections.emptySet();
     }
+
+
 }

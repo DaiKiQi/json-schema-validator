@@ -1,0 +1,72 @@
+[
+  {
+    "description": "ageRange validation",
+    "schema": {
+      "definitions": {},
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "$id": "http://example.com/root.json",
+      "type": "object",
+      "required": [
+        "ageRange"
+      ],
+      "properties": {
+        "ageRange": {
+          "$id": "#/properties/ageRange",
+          "type": "object",
+          "required": [
+            "minAge",
+            "maxAge"
+          ],
+          "properties": {
+            "minAge": {
+              "$id": "#/properties/ageRange/properties/minAge",
+              "type": "integer",
+              "description": "最小年龄",
+              "exclusiveMinimum": 18,
+              "maximum": "$.ageRange.maxAge"
+            },
+            "maxAge": {
+              "$id": "#/properties/ageRange/properties/maxAge",
+              "type": "integer",
+              "description": "最大年龄",
+              "minimum": "$.ageRange.minAge",
+              "exclusiveMaximum": 50
+            }
+          }
+        }
+      }
+    },
+    "tests": [
+      {
+        "description": "is ok",
+        "data": {
+          "ageRange": {
+            "minAge": 30,
+            "maxAge": 40
+          }
+        },
+        "valid": true
+      },
+      {
+        "description": "is ok",
+        "data": {
+          "ageRange": {
+            "minAge": 30,
+            "maxAge": 20
+          }
+        },
+        "valid": false
+      },
+      {
+        "description": "is ok",
+        "data": {
+          "ageRange": {
+            "minAge": 50,
+            "maxAge": 40
+          }
+        },
+        "valid": false
+      }
+    ]
+  }
+]

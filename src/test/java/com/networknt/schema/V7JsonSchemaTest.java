@@ -409,4 +409,9 @@ public class V7JsonSchemaTest {
         runTestFile("draft7/uniqueItems.json");
     }
 
+    @Test
+    public void testValuePath() throws Exception {
+        runTestFile("draft7/valuePath.json");
+    }
+
 }

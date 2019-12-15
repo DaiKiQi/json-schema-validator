@@ -17,6 +17,7 @@
 package com.networknt.schema;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.networknt.schema.utils.PathUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -32,8 +33,8 @@ public class MinimumValidator extends BaseJsonValidator implements JsonValidator
     private boolean excludeEqual = false;
 
     /**
-     *  In order to limit number of `if` statements in `validate` method, all the
-     *  logic of picking the right comparison is abstracted into a mixin.
+     * In order to limit number of `if` statements in `validate` method, all the
+     * logic of picking the right comparison is abstracted into a mixin.
      */
     private final ThresholdMixin typedMinimum;
 
@@ -41,6 +42,30 @@ public class MinimumValidator extends BaseJsonValidator implements JsonValidator
         super(schemaPath, schemaNode, parentSchema, ValidatorTypeCode.MINIMUM, validationContext);
 
         if (!schemaNode.isNumber()) {
+            if (schemaNode.asText().startsWith("$")) {
+                typedMinimum = new ThresholdMixin() {
+                    @Override
+                    public boolean crossesThreshold(JsonNode node) {
+                        return false;
+                    }
+
+                    @Override
+                    public String thresholdValue() {
+                        return null;
+                    }
+
+                    @Override
+                    public String getPath() {
+                        return schemaNode.asText();
+                    }
+
+                    @Override
+                    public ValidationContext getValidationContext() {
+                        return validationContext;
+                    }
+                };
+                return;
+            }
             throw new JsonSchemaException("minimum value is not a number");
         }
 
@@ -113,6 +138,14 @@ public class MinimumValidator extends BaseJsonValidator implements JsonValidator
 
     public Set<ValidationMessage> validate(JsonNode node, JsonNode rootNode, String at) {
         debug(logger, node, rootNode, at);
+
+        String path = typedMinimum.getPath();
+        if (path !=null && path.startsWith("$")) {
+            JsonNode nodeTmp = PathUtil.pathAll(rootNode, path);
+            MinimumValidator minimumValidator = new MinimumValidator(this.getSchemaPath(), nodeTmp,
+                    this.getParentSchema(), typedMinimum.getValidationContext());
+            return minimumValidator.validate(node, rootNode, at);
+        }
 
         if (!TypeValidator.isNumber(node, config.isTypeLoose())) {
             // minimum only applies to numbers

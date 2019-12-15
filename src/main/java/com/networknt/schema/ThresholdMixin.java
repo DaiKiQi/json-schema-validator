@@ -21,4 +21,10 @@ import com.fasterxml.jackson.databind.JsonNode;
 public interface ThresholdMixin {
     boolean crossesThreshold(JsonNode node);
     String thresholdValue();
+    default String getPath(){
+        return null;
+    }
+    default ValidationContext getValidationContext(){
+        return null;
+    }
 }
